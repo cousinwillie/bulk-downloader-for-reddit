@@ -145,7 +145,7 @@ def getPosts(args):
 
     if "search" in args:
         if args["sort"] in ["hot","rising","controversial"]:
-            raise InvalidSortingType
+            raise InvalidSortingType("Invalid sorting type has given")
 
         if "subreddit" in args:
             print (
@@ -157,7 +157,7 @@ def getPosts(args):
                     sort=args["sort"],
                     subreddit=args["subreddit"],
                     time=args["time"]
-                ).upper(),noPrint=True
+                ).upper(),noPrint=True,info=True
             )            
             return redditSearcher(
                 reddit.subreddit(args["subreddit"]).search(
@@ -169,23 +169,23 @@ def getPosts(args):
             )
 
         elif "multireddit" in args:
-            raise NoPrawSupport
+            raise NoPrawSupport("PRAW does not support that")
         
         elif "user" in args:
-            raise NoPrawSupport
+            raise NoPrawSupport("PRAW does not support that")
 
         elif "saved" in args:
-            raise NoRedditSupoort
+            raise NoRedditSupoort("Reddit does not support that")
     
     if args["sort"] == "relevance":
-        raise InvalidSortingType
+        raise InvalidSortingType("Invalid sorting type has given")
 
     if "saved" in args:
         print(
             "saved posts\nuser:{username}\nlimit={limit}\n".format(
                 username=reddit.user.me(),
                 limit=args["limit"]
-            ).upper(),noPrint=True
+            ).upper(),noPrint=True,info=True
         )
         return redditSearcher(reddit.user.me().saved(limit=args["limit"]))
 
@@ -200,7 +200,7 @@ def getPosts(args):
                     sort=args["sort"],
                     subreddit=args["subreddit"],
                     time=args["time"]
-                ).upper(),noPrint=True
+                ).upper(),noPrint=True,info=True
             )
             return redditSearcher(
                 getattr(reddit.front,args["sort"]) (**keyword_params)
@@ -214,7 +214,7 @@ def getPosts(args):
                     sort=args["sort"],
                     subreddit=args["subreddit"],
                     time=args["time"]
-                ).upper(),noPrint=True
+                ).upper(),noPrint=True,info=True
             )
             return redditSearcher(
                 getattr(
@@ -232,7 +232,7 @@ def getPosts(args):
                 sort=args["sort"],
                 multireddit=args["multireddit"],
                 time=args["time"]
-            ).upper(),noPrint=True
+            ).upper(),noPrint=True,info=True
         )
         try:
             return redditSearcher(
@@ -243,7 +243,7 @@ def getPosts(args):
                 ) (**keyword_params)
             )
         except NotFound:
-            raise MultiredditNotFound
+            raise MultiredditNotFound("Multireddit not found")
 
     elif "submitted" in args:
         print (
@@ -253,7 +253,7 @@ def getPosts(args):
                 sort=args["sort"],
                 user=args["user"],
                 time=args["time"]
-            ).upper(),noPrint=True
+            ).upper(),noPrint=True,info=True
         )
         return redditSearcher(
             getattr(
@@ -266,17 +266,18 @@ def getPosts(args):
             "upvoted posts of {user}\nlimit: {limit}\n".format(
                 user=args["user"],
                 limit=args["limit"]
-            ).upper(),noPrint=True
+            ).upper(),noPrint=True,info=True
         )
         try:
             return redditSearcher(
                 reddit.redditor(args["user"]).upvoted(limit=args["limit"])
             )
         except Forbidden:
-            raise InsufficientPermission
+            raise InsufficientPermission("You do not have permission to do that")
 
     elif "post" in args:
-        print("post: {post}\n".format(post=args["post"]).upper(),noPrint=True)
+        print("post: {post}\n".format(post=args["post"]).upper(),noPrint=True,
+              info=True)
         return redditSearcher(
             reddit.submission(url=args["post"]),SINGLE_POST=True
         )
@@ -305,9 +306,10 @@ def redditSearcher(posts,SINGLE_POST=False):
 
     allPosts = {}
 
-    print("\nGETTING POSTS")
+    if not GLOBAL.arguments.continuous: print("\nGETTING POSTS")
     if GLOBAL.arguments.verbose: print("\n")
-    postsFile = createLogFile("POSTS")
+    
+    if not GLOBAL.arguments.continuous: postsFile = createLogFile("POSTS")
 
     if SINGLE_POST:
         submission = posts
@@ -331,28 +333,29 @@ def redditSearcher(posts,SINGLE_POST=False):
                 printSubmission(submission,subCount,orderCount)
             subList.append(details)
 
-        postsFile.add({subCount:[details]})
+        if not GLOBAL.arguments.continuous: postsFile.add({subCount:[details]})
 
     else:
         try:
             for submission in posts:
                 subCount += 1
 
-                if subCount % 100 == 0 and not GLOBAL.arguments.verbose:
-                    sys.stdout.write("• ")
-                    sys.stdout.flush()
+                if not GLOBAL.arguments.continuous:
+                    if subCount % 100 == 0 and not GLOBAL.arguments.verbose:
+                        sys.stdout.write("• ")
+                        sys.stdout.flush()
 
-                if subCount % 1000 == 0:
-                    sys.stdout.write("\n"+" "*14)
-                    sys.stdout.flush()
+                    if subCount % 1000 == 0 and not GLOBAL.arguments.verbose:
+                        sys.stdout.write("\n"+" "*14)
+                        sys.stdout.flush()
 
                 try:
                     details = {'postId':submission.id,
-                            'postTitle':submission.title,
-                            'postSubmitter':str(submission.author),
-                            'postType':None,
-                            'postURL':submission.url,
-                            'postSubreddit':submission.subreddit.display_name}
+                               'postTitle':submission.title,
+                               'postSubmitter':str(submission.author),
+                               'postType':None,
+                               'postURL':submission.url,
+                               'postSubreddit':submission.subreddit.display_name}
                 except AttributeError:
                     continue
 
@@ -367,9 +370,10 @@ def redditSearcher(posts,SINGLE_POST=False):
 
                 allPosts[subCount] = [details]
         except KeyboardInterrupt:
+            if GLOBAL.arguments.continuous: raise
             print("\nKeyboardInterrupt",noPrint=True)
         
-        postsFile.add(allPosts)
+        if not GLOBAL.arguments.continuous: postsFile.add(allPosts)
 
     if not len(subList) == 0:
         if GLOBAL.arguments.NoDownload or GLOBAL.arguments.verbose:
@@ -382,10 +386,10 @@ def redditSearcher(posts,SINGLE_POST=False):
                 f"and {selfCount} SELF POSTS",noPrint=True
             )
         else:
-            print()
+            if not GLOBAL.arguments.continuous: print()
         return subList
     else:
-        raise NoMatchingSubmissionFound
+        raise NoMatchingSubmissionFound("No matching submission was found")
 
 def checkIfMatching(submission):
     global gfycatCount

@@ -84,13 +84,15 @@ def createLogFile(TITLE):
     if not path.exists(folderDirectory):
         makedirs(folderDirectory)
 
-    FILE = jsonFile(folderDirectory / Path(logFilename))
-    HEADER = " ".join(sys.argv)
-    FILE.add({"HEADER":HEADER})
+    if not path.isfile(folderDirectory / Path(logFilename)):
+        FILE = jsonFile(folderDirectory / Path(logFilename))
+        HEADER = " ".join(sys.argv)
+        FILE.add({"HEADER":HEADER})
+        return FILE
+    else:
+        return jsonFile(folderDirectory / Path(logFilename))
 
-    return FILE
-
-def printToFile(*args, noPrint=False,**kwargs):
+def printToFile(*args, noPrint=False, info=False, **kwargs):
     """Print to both CONSOLE and 
     CONSOLE LOG file in a folder time stampt in the name
     """
@@ -98,6 +100,8 @@ def printToFile(*args, noPrint=False,**kwargs):
     TIME = str(time.strftime("%d-%m-%Y_%H-%M-%S",
                              time.localtime(GLOBAL.RUN_TIME)))
     folderDirectory = GLOBAL.directory / "LOG_FILES" / TIME
+
+    filename = "INFO.txt" if info else "CONSOLE_LOG.txt"
 
     if not noPrint or \
        GLOBAL.arguments.verbose or \
@@ -110,7 +114,7 @@ def printToFile(*args, noPrint=False,**kwargs):
     
     if not "file" in kwargs:
         with io.open(
-            folderDirectory / "CONSOLE_LOG.txt","a",encoding="utf-8"
+            folderDirectory / filename,"a",encoding="utf-8"
         ) as FILE:
             print(*args, file=FILE, **kwargs) 
 

@@ -88,6 +88,11 @@ def parseArguments(arguments=[]):
                         action="store_true",
                         default=False)
     
+    parser.add_argument("--continuous","-c",
+                        help="Continuous search: downloads new posts",
+                        action="store_true",
+                        default=False)
+
     parser.add_argument("--verbose","-v",
                         help="Verbose Mode",
                         action="store_true",
@@ -179,6 +184,9 @@ def checkConflicts():
     if not, raise errors
     """
 
+    # TODO
+    # Add link mode and continuous mode conflict
+
     if GLOBAL.arguments.user is None:
         user = 0
     else:
@@ -195,10 +203,14 @@ def checkConflicts():
              else 1 \
              for x in modes
     }
-
+    
     if not sum(values[x] for x in values) == 1:
         raise ProgramModeError("Invalid program mode")
     
+    if GLOBAL.arguments.continuous and GLOBAL.arguments.NoDownload:
+        raise ProgramModeError("You cannot use NoDownload with" \
+                               " continuous search")
+
     if values["search"]+values["saved"] == 2:
         raise SearchModeError("You cannot search in your saved posts")
 
@@ -388,7 +400,7 @@ def prepareAttributes():
         try:
             ATTRIBUTES = LinkDesigner(GLOBAL.arguments.link)
         except InvalidRedditLink:
-            raise InvalidRedditLink
+            raise InvalidRedditLink("Invalid reddit link")
 
         if GLOBAL.arguments.search is not None:
             ATTRIBUTES["search"] = GLOBAL.arguments.search
@@ -418,7 +430,7 @@ def prepareAttributes():
         ATTRIBUTES["submitted"] = True
 
         if GLOBAL.arguments.sort == "rising":
-            raise InvalidSortingType
+            raise InvalidSortingType("Invalid sorting type has given")
     
     ATTRIBUTES["limit"] = GLOBAL.arguments.limit
 
@@ -630,14 +642,28 @@ def download(submissions):
             ]})
             downloadedCount -= 1
 
-    if duplicates:
-        print("\n There was {} duplicates".format(duplicates))
+    if not GLOBAL.arguments.continuous:
+        if duplicates:
+            print("\n There was {} duplicates".format(duplicates))
 
-    if downloadedCount == 0:
-        print(" Nothing downloaded :(")
+        if downloadedCount == 0:
+            print(" Nothing downloaded :(")
 
-    else:
-        print(" Total of {} links downloaded!".format(downloadedCount))
+        else:
+            print(" Total of {} links downloaded!".format(downloadedCount))
+
+def continuousSearch(attributes):
+    POST_LIMIT_FOR_EACH_CHECK = 100
+    GLOBAL.arguments.limit = POST_LIMIT_FOR_EACH_CHECK
+    downloadedPosts = [post["postId"] for post in getPosts(attributes)]
+    while True:
+        checkPosts = getPosts(attributes)
+        newPosts = [post for post in checkPosts if not post["postId"] in downloadedPosts]
+        if not GLOBAL.arguments.NoDownload and len(newPosts) > 0: 
+            download(newPosts)
+            print()
+        downloadedPosts += [post["postId"] for post in newPosts]
+        time.sleep(1)
 
 def main():
     GLOBAL.arguments = parseArguments()
@@ -662,40 +688,24 @@ def main():
         logDir = Path(GLOBAL.arguments.log)
         download(postFromLog(logDir))
         sys.exit()
+
+    attributes = prepareAttributes()
+
+    if not GLOBAL.arguments.continuous:
+        POSTS = getPosts(attributes)
+
+        if POSTS is None:
+            print("I could not find any posts in that URL")
+            sys.exit()
+
+        if GLOBAL.arguments.NoDownload:
+            sys.exit()
     
-    try:
-        POSTS = getPosts(prepareAttributes())
-    except InsufficientPermission:
-        print("You do not have permission to do that")
-        sys.exit()
-    except NoMatchingSubmissionFound:
-        print("No matching submission was found")
-        sys.exit()
-    except NoRedditSupoort:
-        print("Reddit does not support that")
-        sys.exit()
-    except NoPrawSupport:
-        print("PRAW does not support that")
-        sys.exit()
-    except MultiredditNotFound:
-        print("Multireddit not found")
-        sys.exit()
-    except InvalidSortingType:
-        print("Invalid sorting type has given")
-        sys.exit()
-    except InvalidRedditLink:
-        print("Invalid reddit link")
-        sys.exit()
-
-    if POSTS is None:
-        print("I could not find any posts in that URL")
-        sys.exit()
-
-    if GLOBAL.arguments.NoDownload:
-        sys.exit()
+    elif GLOBAL.arguments.continuous:
+        continuousSearch(attributes)
 
     else:
-        download(POSTS)
+        download(POSTS)   
 
 if __name__ == "__main__":
 
