@@ -653,9 +653,11 @@ def download(submissions):
             print(" Total of {} links downloaded!".format(downloadedCount))
 
 def continuousSearch(attributes):
-    POST_LIMIT_FOR_EACH_CHECK = 100
+    # TODO Fix timeout
+    POST_LIMIT_FOR_EACH_CHECK = 25
     GLOBAL.arguments.limit = POST_LIMIT_FOR_EACH_CHECK
     downloadedPosts = [post["postId"] for post in getPosts(attributes)]
+    time.sleep(5)
     while True:
         checkPosts = getPosts(attributes)
         newPosts = [post for post in checkPosts if not post["postId"] in downloadedPosts]
@@ -663,7 +665,9 @@ def continuousSearch(attributes):
             download(newPosts)
             print()
         downloadedPosts += [post["postId"] for post in newPosts]
-        time.sleep(1)
+        sys.stdout.write("• ")
+        sys.stdout.flush()
+        time.sleep(5)
 
 def main():
     GLOBAL.arguments = parseArguments()
