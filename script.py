@@ -525,8 +525,8 @@ def downloadPost(SUBMISSION):
                 ),end="",**printCredit
             )
 
-            if not (credit['UserRemaining'] == 0 or \
-                    credit['ClientRemaining'] == 0):
+            if not (credit['UserRemaining'] < 5 or \
+                    credit['ClientRemaining'] < 5):
 
                 """This block of code is needed
                 """
@@ -536,12 +536,12 @@ def downloadPost(SUBMISSION):
                 lastRequestTime = time.time()
 
             else:
-                if credit['UserRemaining'] == 0:
+                if credit['UserRemaining'] < 5:
                     KEYWORD = "user"
-                elif credit['ClientRemaining'] == 0:
+                elif credit['ClientRemaining'] < 5:
                     KEYWORD = "client"
 
-                raise ImgurLimitError('{} LIMIT EXCEEDED\n'.format(KEYWORD.upper()))
+                GLOBAL.proxies.newProxy()
 
         downloaders[SUBMISSION['postType']] (directory,SUBMISSION)
 

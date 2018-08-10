@@ -1,11 +1,14 @@
+import csv
 import io
 import json
 import sys
 import time
+from itertools import cycle
 from os import makedirs, path, remove
 from pathlib import Path
 
 from src.errors import FileNotFoundError
+
 
 class GLOBAL:
     """Declare global variables"""
@@ -18,6 +21,29 @@ class GLOBAL:
     reddit_client_id = "BSyphDdxYZAgVQ"
     reddit_client_secret = "bfqNJaRh8NMh-9eAr-t4TRz-Blk"
     printVanilla = print
+
+    proxies = Proxies()
+
+class Proxies:
+    proxyListDirectory = GLOBAL.configDirectory / "proxy"
+
+    def __init__(self):
+        if not Path(self.proxyListDirectory).exists():
+            open(self.proxyListDirectory, 'a').close()
+
+        with open(self.proxyListDirectory, "r+") as FILE:
+            self._proxyList = [{line[0]:line[1]} for line in csv.reader(FILE)]
+        
+        self._proxyCycle = cycle([None]) if len(self._proxyList) is 0 else cycle(self.__iterate())
+        self.newProxy()
+    
+    def newProxy(self):
+        self.proxy = next(self._proxyCycle)
+        return self.proxy
+
+    def __iterate(self):
+        for proxy in self._proxyList:
+            yield proxy
 
 class jsonFile:
     """ Write and read JSON files
