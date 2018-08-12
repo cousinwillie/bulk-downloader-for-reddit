@@ -68,7 +68,7 @@ def getFile(fileDir,tempDir,imageURL,indent=0):
 
     proxy = urllib.request.ProxyHandler(GLOBAL.proxies.proxy)
 
-    opener = urllib.request.build_opener()
+    opener = urllib.request.build_opener(proxy)
     opener.addheaders = headers
     urllib.request.install_opener(opener)
 
